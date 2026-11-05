@@ -122,8 +122,10 @@ export function DrawingViewer({ versions, initialId, onClose, actions }: {
   const cur = versions.find((v) => v.id === curId) ?? versions[0];
   const others = versions.filter((v) => v.id !== cur.id && !isPdf(v.mime, v.name));
   const [mode, setMode] = useState<'single' | 'side' | 'swipe'>('single');
-  const [cmpId, setCmpId] = useState<string>(others[0]?.id ?? '');
-  const cmp = versions.find((v) => v.id === cmpId);
+  const [cmpPick, setCmpId] = useState<string>('');
+  // Fall back to the newest other version (versions can be added while the viewer is open).
+  const cmpId = others.some((v) => v.id === cmpPick) ? cmpPick : others[0]?.id ?? '';
+  const cmp = others.find((v) => v.id === cmpId);
   const a = useBlobUrl(cur.id);
   const b = useBlobUrl(mode !== 'single' ? cmp?.id : undefined);
   const [view, setViewState] = useState<View>({ s: 1, x: 0, y: 0 });

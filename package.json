@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4173",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "e2e": "NODE_PATH=$(npm root -g) node scripts/e2e.cjs",
+    "icons": "NODE_PATH=$(npm root -g) node scripts/make-icons.cjs"
   },
   "dependencies": {
     "@fontsource/amiri": "^5.1.0",

@@ -8,3 +8,4 @@ worker/.wrangler/
 !.env.example
 *.local
 test-results/
+*.tsbuildinfo

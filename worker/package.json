@@ -1,0 +1,14 @@
+{
+  "name": "joudy-ai-worker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "hash-token": "node -e \"const c=require('crypto');const t=c.randomBytes(24).toString('base64url');console.log('TOKEN (give to Joudy, store nowhere else):',t);console.log('ACCESS_TOKEN_SHA256 (wrangler secret):',c.createHash('sha256').update(t).digest('hex'))\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

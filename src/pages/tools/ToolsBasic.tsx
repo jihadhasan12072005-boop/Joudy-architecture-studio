@@ -152,7 +152,7 @@ export function AreaTool() {
 export function UnitsTool() {
   const [cat, setCat] = useState('stress');
   const c = UNIT_CATEGORIES.find((x) => x.id === cat)!;
-  const [from, setFrom] = useState(c.units[0].id);
+  const [from, setFrom] = useState('MPa');
   const [val, setVal] = useState(1);
   const fromId = c.units.some((u) => u.id === from) ? from : c.units[0].id;
   return (

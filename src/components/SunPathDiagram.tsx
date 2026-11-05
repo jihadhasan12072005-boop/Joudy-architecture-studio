@@ -46,6 +46,7 @@ export function SunPathDiagram({ lat, lon, utcOffset, northAngle, year, marker, 
   }
 
   return (
+    <figure style={{ margin: 0 }}>
     <svg viewBox={`0 0 ${S} ${S}`} className="diagram" role="img" aria-label="مخطط مسار الشمس">
       <rect width={S} height={S} fill="#fffdf9" />
       {[0, 15, 30, 45, 60, 75].map((a) => (
@@ -64,7 +65,7 @@ export function SunPathDiagram({ lat, lon, utcOffset, northAngle, year, marker, 
       {siteRect && (
         <g>
           <rect x={c - siteRect.w / 2} y={c - siteRect.h / 2} width={siteRect.w} height={siteRect.h} fill="rgba(46,43,39,0.06)" stroke="#2e2b27" strokeWidth="1.2" />
-          <text x={c} y={c + siteRect.h / 2 + 13} fontSize="9.5" textAnchor="middle" fill="#6e675d">الموقع (أعلى الصفحة = أعلى المخطط)</text>
+          <text x={c - siteRect.w / 2 + 4} y={c - siteRect.h / 2 + 12} fontSize="9.5" textAnchor="start" fill="#6e675d">الموقع</text>
         </g>
       )}
       {paths.map((p) => (
@@ -103,14 +104,11 @@ export function SunPathDiagram({ lat, lon, utcOffset, northAngle, year, marker, 
           </g>
         );
       })}
-      <g transform={`translate(12 ${S - 58})`} fontSize="10.5">
-        {DATES.map((d, i) => (
-          <g key={d.label} transform={`translate(0 ${i * 16})`}>
-            <line x1="0" y1="-3" x2="16" y2="-3" stroke={d.color} strokeWidth="2.5" />
-            <text x="22" y="0" fill="#2e2b27" textAnchor="start" style={{ direction: 'rtl', unicodeBidi: 'plaintext' }}>{d.label}</text>
-          </g>
-        ))}
-      </g>
     </svg>
+      <figcaption className="legend">
+        {DATES.map((d) => <span key={d.label}><i style={{ background: d.color }} />{d.label}</span>)}
+        <span>الأرقام = الساعة المحلية (صيفاً)</span>
+      </figcaption>
+    </figure>
   );
 }
