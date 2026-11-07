@@ -2,12 +2,12 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { getDB } from './db';
 import { DATA_VERSION } from './migrations';
 import { normalizeProject } from './defaults';
-import type { FileMeta, Project, Settings } from './types';
+import type { FileMeta, PlanStudy, Project, Settings } from './types';
 
 export const BACKUP_APP_ID = 'joudy-architecture-studio';
 export const BACKUP_FORMAT = 1;
 
-const RECORD_STORES = ['projects', 'files', 'tasks', 'activity', 'revisions', 'subjects', 'mistakes', 'conversations'] as const;
+const RECORD_STORES = ['projects', 'files', 'tasks', 'activity', 'revisions', 'subjects', 'mistakes', 'conversations', 'studies'] as const;
 type RecordStore = (typeof RECORD_STORES)[number];
 
 export interface BackupManifest {
@@ -39,6 +39,10 @@ export async function createBackup(): Promise<{ bytes: Uint8Array; manifest: Bac
     if (b) zip[`blobs/${f.id}`] = [new Uint8Array(await b.blob.arrayBuffer()), { level: 0 }];
     const t = (await db.get('thumbs', f.id)) as { blob: Blob } | undefined;
     if (t) zip[`thumbs/${f.id}`] = [new Uint8Array(await t.blob.arrayBuffer()), { level: 0 }];
+  }
+  for (const st of stores.studies as PlanStudy[]) {
+    const b = (await db.get('blobs', st.sourceBlobId)) as { blob: Blob } | undefined;
+    if (b) zip[`blobs/${st.sourceBlobId}`] = [new Uint8Array(await b.blob.arrayBuffer()), { level: 0 }];
   }
 
   const manifest: BackupManifest = {
@@ -98,7 +102,7 @@ export async function importBackup(bytes: Uint8Array, mode: 'merge' | 'replace')
   const counts: Record<string, number> = {};
   let missingFiles = 0;
   for (const s of RECORD_STORES) {
-    const rows = (data.stores?.[s] ?? []) as Record<string, unknown>[];
+    const rows = (data.stores?.[s] ?? []) as Record<string, unknown>[]; // older backups have no 'studies'
     counts[s] = rows.length;
     for (const row of rows) {
       if (s === 'projects') {
@@ -114,6 +118,15 @@ export async function importBackup(bytes: Uint8Array, mode: 'merge' | 'replace')
         tx.objectStore('blobs').put({ id: f.id, blob: new Blob([blobBytes], { type: f.mime }) });
         const th = files[`thumbs/${f.id}`];
         if (th) tx.objectStore('thumbs').put({ id: f.id, blob: new Blob([th], { type: 'image/jpeg' }) });
+      } else if (s === 'studies') {
+        const st = row as unknown as PlanStudy;
+        const bytes = files[`blobs/${st.sourceBlobId}`];
+        if (!bytes) {
+          missingFiles++;
+          continue;
+        }
+        tx.objectStore('blobs').put({ id: st.sourceBlobId, blob: new Blob([bytes], { type: st.sourceMime }) });
+        tx.objectStore('studies').put(st);
       } else {
         tx.objectStore(s).put(row);
       }

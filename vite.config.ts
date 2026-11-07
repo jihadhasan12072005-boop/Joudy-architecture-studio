@@ -40,6 +40,8 @@ export default defineConfig({
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // The 1.4 MB PDF worker is only downloaded when a PDF plan is opened, then kept offline.
+        runtimeCaching: [{ urlPattern: /\.mjs$/, handler: 'CacheFirst', options: { cacheName: 'pdf-worker', expiration: { maxEntries: 4 } } }],
       },
     }),
   ],

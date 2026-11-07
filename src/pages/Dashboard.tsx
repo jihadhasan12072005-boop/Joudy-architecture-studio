@@ -82,6 +82,18 @@ export function Dashboard() {
         </div>
       )}
 
+      <section className="lab-cta-card">
+        <div className="stack sm" style={{ flex: 1, minWidth: 240 }}>
+          <span className="eyebrow">مختبر الكتلة — Massing Lab</span>
+          <h2>حوّلي مسقطك إلى كتلة ثلاثية الأبعاد</h2>
+          <p className="small muted" style={{ margin: 0 }}>ارفعي صورة أو PDF للمسقط، وسيُستخرج منه مخطط كتلة، نموذج ثلاثي الأبعاد، تنطيق، مقاطع، وتحليل — كله على جهازك.</p>
+        </div>
+        <div className="row">
+          <Link to="/lab" className="btn bronze lab-cta"><Icon name="upload" />ارفعي مسقطاً معمارياً</Link>
+          <Link to="/lab" className="btn">جرّبي بمثال</Link>
+        </div>
+      </section>
+
       <div className="dash-grid">
         {/* Current project */}
         <section className="span-8">

@@ -13,6 +13,8 @@ import { Mistakes } from './pages/Mistakes';
 import { Assistant } from './pages/Assistant';
 import { SettingsPage } from './pages/Settings';
 import { PrintReport } from './pages/project/PrintReport';
+import { LabIndex } from './pages/lab/LabIndex';
+import { LabStudy } from './pages/lab/LabStudy';
 
 export function App() {
   const settings = useLive(getSettings);
@@ -31,6 +33,8 @@ export function App() {
                 <Route path="projects" element={<Projects />} />
                 <Route path="projects/:id" element={<ProjectWorkspace />} />
                 <Route path="projects/:id/:tab" element={<ProjectWorkspace />} />
+                <Route path="lab" element={<LabIndex />} />
+                <Route path="lab/:id" element={<LabStudy />} />
                 <Route path="tools" element={<ToolsIndex />} />
                 <Route path="tools/:toolId" element={<ToolPage />} />
                 <Route path="academy" element={<Academy />} />

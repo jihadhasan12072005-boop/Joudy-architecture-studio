@@ -162,6 +162,9 @@ export function DrawingsTab({ project: p, update }: TabProps) {
               {isImage(f.mime) && (
                 <button className="btn sm" onClick={() => { update((x) => ({ ...x, coverFileId: f.id })); toast('أصبحت صورة غلاف المشروع'); }}><Icon name="star" /><span className="hide-mobile">غلاف</span></button>
               )}
+              {(isImage(f.mime) || isPdf(f.mime, f.name)) && (
+                <button className="btn sm bronze" onClick={() => nav(`/lab?file=${f.id}`)}><Icon name="cube" /><span className="hide-mobile">توليد كتلة</span></button>
+              )}
               {isImage(f.mime) && (
                 <button className="btn sm" onClick={() => nav(`/assistant?project=${p.id}&file=${f.id}`)}><Icon name="spark" /><span className="hide-mobile">اسألي المساعد</span></button>
               )}

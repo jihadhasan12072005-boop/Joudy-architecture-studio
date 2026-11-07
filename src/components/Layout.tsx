@@ -6,6 +6,7 @@ import { UpdateBanner } from './UpdateBanner';
 
 const NAV = [
   { to: '/', icon: 'home', label: 'الرئيسية', end: true },
+  { to: '/lab', icon: 'cube', label: 'مختبر الكتلة' },
   { to: '/projects', icon: 'folder', label: 'المشاريع' },
   { to: '/tools', icon: 'compass', label: 'الأدوات الهندسية' },
   { to: '/academy', icon: 'book', label: 'المواد الدراسية' },
@@ -33,14 +34,14 @@ export function Layout() {
       <aside className="sidebar" aria-label="القائمة الرئيسية">
         <Brand />
         <div className="nav-label">الاستوديو</div>
-        {NAV.slice(0, 3).map((n) => (
+        {NAV.slice(0, 4).map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Icon name={n.icon} />
             {n.label}
           </NavLink>
         ))}
         <div className="nav-label">الدراسة</div>
-        {NAV.slice(3).map((n) => (
+        {NAV.slice(4).map((n) => (
           <NavLink key={n.to} to={n.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Icon name={n.icon} />
             {n.label}
@@ -64,6 +65,7 @@ export function Layout() {
           <Brand />
           <div className="row" style={{ gap: 6 }}>
             {!online && <span className="badge warn"><Icon name="wifioff" size={13} />غير متصل</span>}
+            <NavLink to="/tools" className="btn ghost icon" aria-label="الأدوات الهندسية"><Icon name="compass" /></NavLink>
             <NavLink to="/mistakes" className="btn ghost icon" aria-label="دفتر الأخطاء"><Icon name="notebook" /></NavLink>
             <NavLink to="/settings" className="btn ghost icon" aria-label="الإعدادات"><Icon name="settings" /></NavLink>
           </div>
@@ -73,10 +75,10 @@ export function Layout() {
       </div>
 
       <nav className="mobile-nav" aria-label="التنقل">
-        {[NAV[0], NAV[1], NAV[2], NAV[3], NAV[5]].map((n) => (
+        {[NAV[0], NAV[1], NAV[2], NAV[4], NAV[6]].map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'active' : '')}>
             <Icon name={n.icon} />
-            {n.label.replace('الأدوات الهندسية', 'الأدوات').replace('المواد الدراسية', 'المواد').replace('المساعد الذكي', 'المساعد')}
+            {n.label.replace('الأدوات الهندسية', 'الأدوات').replace('المواد الدراسية', 'المواد').replace('المساعد الذكي', 'المساعد').replace('مختبر الكتلة', 'الكتلة')}
           </NavLink>
         ))}
       </nav>

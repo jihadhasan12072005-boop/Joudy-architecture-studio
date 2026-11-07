@@ -5,6 +5,7 @@ import type {
   Conversation,
   FileMeta,
   Mistake,
+  PlanStudy,
   Project,
   Revision,
   SubjectProgress,
@@ -18,7 +19,7 @@ export const DB_NAME = 'joudy-architecture-studio';
  * Only ever add stores/indexes in new branches of `upgrade` — never delete
  * a store that holds user data.
  */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface JoudyDB {
   meta: { key: string; value: unknown };
@@ -32,6 +33,7 @@ export interface JoudyDB {
   subjects: { key: string; value: SubjectProgress };
   mistakes: { key: string; value: Mistake; indexes: { bySubject: string } };
   conversations: { key: string; value: Conversation; indexes: { byProject: string; byUpdated: number } };
+  studies: { key: string; value: PlanStudy; indexes: { byProject: string; byUpdated: number } };
 }
 
 // The idb typings want a DBSchema; we keep it loose to avoid generic gymnastics.
@@ -68,7 +70,13 @@ export function getDB(): Promise<DB> {
           conv.createIndex('byProject', 'projectId');
           conv.createIndex('byUpdated', 'updatedAt');
         }
-        // Future: `if (oldVersion < 2) { ...add stores/indexes only... }`
+        if (oldVersion < 2) {
+          // v2: architectural plan studies (massing lab). Existing stores untouched.
+          const studies = db.createObjectStore('studies', { keyPath: 'id' });
+          studies.createIndex('byProject', 'projectId');
+          studies.createIndex('byUpdated', 'updatedAt');
+        }
+        // Future: `if (oldVersion < 3) { ...add stores/indexes only... }`
       },
       blocked() {
         console.warn('Database upgrade blocked by another open tab.');

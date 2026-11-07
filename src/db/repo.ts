@@ -7,6 +7,7 @@ import type {
   FileMeta,
   ID,
   Mistake,
+  PlanStudy,
   Project,
   Revision,
   Settings,
@@ -432,5 +433,46 @@ export async function saveConversation(c: Conversation): Promise<void> {
 export async function deleteConversation(id: ID): Promise<void> {
   const db = await getDB();
   await db.delete('conversations', id);
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Plan studies (massing lab)
+// ---------------------------------------------------------------------------
+export async function listStudies(): Promise<PlanStudy[]> {
+  const db = await getDB();
+  const all = (await db.getAll('studies')) as PlanStudy[];
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function getStudy(id: ID): Promise<PlanStudy | undefined> {
+  const db = await getDB();
+  return (await db.get('studies', id)) as PlanStudy | undefined;
+}
+
+export async function createStudy(study: PlanStudy, source: Blob): Promise<PlanStudy> {
+  const db = await getDB();
+  const tx = db.transaction(['studies', 'blobs'], 'readwrite');
+  tx.objectStore('blobs').put({ id: study.sourceBlobId, blob: source });
+  tx.objectStore('studies').put(study);
+  await tx.done;
+  await logActivity(`بدأتِ دراسة كتلة «${study.title}»`, study.projectId);
+  emit();
+  return study;
+}
+
+export async function saveStudy(study: PlanStudy): Promise<void> {
+  const db = await getDB();
+  await db.put('studies', { ...study, updatedAt: Date.now() });
+  emit();
+}
+
+export async function deleteStudy(id: ID): Promise<void> {
+  const db = await getDB();
+  const s = (await db.get('studies', id)) as PlanStudy | undefined;
+  const tx = db.transaction(['studies', 'blobs'], 'readwrite');
+  tx.objectStore('studies').delete(id);
+  if (s) tx.objectStore('blobs').delete(s.sourceBlobId);
+  await tx.done;
   emit();
 }

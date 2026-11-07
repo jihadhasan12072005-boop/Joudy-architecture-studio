@@ -298,6 +298,30 @@ export interface Settings {
   lastBackupAt: number;
 }
 
+export interface PlanStudy {
+  id: ID;
+  projectId: ID | null;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  sourceBlobId: ID; // original upload, stored in the 'blobs' store
+  sourceName: string;
+  sourceMime: string;
+  pdfPage: number;
+  workMaxSide: number; // working raster size used for extraction
+  params: import('../lab/model').ExtractParams;
+  spaces: import('../lab/model').SpaceSetting[];
+  scale: import('../lab/model').ScaleInfo | null;
+  defaultFloors: number;
+  floorHeight: number;
+  mode: import('../lab/model').MassingMode;
+  explodeGap: number;
+  entrances: [number, number][];
+  travelLimit: number;
+  northAngle: number;
+  step: number; // tutorial / workflow step reached
+}
+
 export const STORE_NAMES = [
   'meta',
   'projects',
@@ -310,6 +334,7 @@ export const STORE_NAMES = [
   'subjects',
   'mistakes',
   'conversations',
+  'studies',
 ] as const;
 
 export type StoreName = (typeof STORE_NAMES)[number];

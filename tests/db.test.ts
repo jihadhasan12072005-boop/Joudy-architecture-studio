@@ -129,6 +129,7 @@ describe('migrations / app updates', () => {
 
     const db = await getDB();
     expect(await db.get('meta', 'dataVersion')).toBe(DATA_VERSION);
+    expect(db.objectStoreNames.contains('studies')).toBe(true); // v1 → v2 structure upgrade
     const p = await getProject('old-1');
     expect(p?.name).toBe('مشروع قديم');
     expect(p?.brief).toBe('نص مهم');
