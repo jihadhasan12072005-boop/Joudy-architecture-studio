@@ -24,6 +24,16 @@ function png(w, h) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 
+
+async function confirmDownload(page, triggerClick) {
+  await triggerClick();
+  const dlg = page.getByRole('dialog', { name: /تصدير/ });
+  try { await dlg.getByRole('button', { name: 'تنزيل الملف' }).waitFor({ timeout: 40000 }); }
+  catch (e) { console.log('   DIALOG STATE:', (await page.locator('[role=dialog]').allInnerTexts()).join(' | ').slice(0, 400)); throw e; }
+  const [d] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), dlg.getByRole('button', { name: 'تنزيل الملف' }).click()]);
+  return d;
+}
+
 (async () => {
   const plan = path.join(OUT, 'plan.png');
   fs.writeFileSync(plan, png(1000, 600));
@@ -230,7 +240,7 @@ function png(w, h) {
 
   console.log('12. Export: PNG, GLB, re-editable project file → reopen');
   const dl = async (name, file) => {
-    const [d] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name, exact: true }).click()]);
+    const d = await confirmDownload(page, () => page.getByRole('button', { name, exact: true }).click());
     const p = path.join(OUT, file); await d.saveAs(p); return p;
   };
   const pngP = await dl('صورة PNG', 'export.png');

@@ -11,6 +11,8 @@ import {
   toLocal, toWorld, type Mass, type V2,
 } from './geom';
 import type { EditorModel } from './model';
+import { captureScene } from '../lab/capture';
+import { ExportError } from '../lib/exportGuard';
 
 export type Tool = 'select' | 'rect' | 'poly' | 'edit' | 'void' | 'scale' | 'image';
 export type View = 'plan' | '3d' | 'N' | 'E' | 'S' | 'W';
@@ -122,6 +124,7 @@ export class MassEditorEngine {
     window.removeEventListener('pointerup', this.onUp);
     this.controls.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 
@@ -799,24 +802,25 @@ export class MassEditorEngine {
 
   // ------------------------------------------------------------------ export
   async snapshotPng(scale = 2): Promise<Blob> {
-    const hidden = this.overlay.visible;
-    this.overlay.visible = false;
+    if (!this.st.model.masses.length) throw new ExportError('لا توجد كتل بعد — ارسمي كتلة واحدة على الأقل قبل التصدير.');
     const bg = this.scene.background;
-    this.scene.background = new THREE.Color('#ffffff');
-    const w = this.host.clientWidth, h = this.host.clientHeight;
-    this.renderer.setPixelRatio(scale);
-    this.renderer.setSize(w, h);
-    this.renderer.render(this.scene, this.camera);
-    const blob = await new Promise<Blob>((res) => this.renderer.domElement.toBlob((b) => res(b!), 'image/png'));
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    this.renderer.setSize(w, h);
-    this.scene.background = bg;
-    this.overlay.visible = hidden;
-    this.invalidate();
-    return blob;
+    const w = this.host.clientWidth || 800, h = this.host.clientHeight || 600;
+    try {
+      return await captureScene({
+        renderer: this.renderer, scene: this.scene, camera: this.camera as THREE.PerspectiveCamera | THREE.OrthographicCamera, target: this.controls.target,
+        content: this.massGroup, scale, width: w, height: h,
+        before: () => { this.overlay.visible = false; this.scene.background = new THREE.Color('#ffffff'); },
+        after: () => { this.overlay.visible = true; this.scene.background = bg; },
+      });
+    } finally {
+      this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      this.renderer.setSize(w, h);
+      this.invalidate();
+    }
   }
 
   exportGLB(): Promise<Blob> {
+    if (!this.st.model.masses.length) return Promise.reject(new ExportError('لا توجد كتل لتصديرها.'));
     const root = new THREE.Group();
     root.name = this.st.model.title;
     for (const m of this.st.model.masses) {

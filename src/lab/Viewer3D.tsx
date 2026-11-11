@@ -5,6 +5,8 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import type { Volume } from './model';
 import type { Polygon } from './trace';
+import { captureScene } from './capture';
+import { ExportError } from '../lib/exportGuard';
 
 export interface ViewerApi {
   snapshot: (scale?: number) => Promise<Blob>;
@@ -111,22 +113,18 @@ export function Viewer3D(props: ViewerProps) {
     const api: ViewerApi = {
       setView,
       snapshot: (scale = 2) =>
-        new Promise((resolve) => {
-          const w = el.clientWidth, h = el.clientHeight;
-          renderer.setPixelRatio(scale);
-          renderer.setSize(w, h);
-          s.render();
-          renderer.domElement.toBlob((b) => {
-            renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-            renderer.setSize(w, h);
-            s.render();
-            resolve(b!);
-          }, 'image/png');
+        captureScene({
+          renderer, scene, camera: s.cam as THREE.PerspectiveCamera | THREE.OrthographicCamera, target: controls.target, content: group,
+          scale, width: el.clientWidth || 800, height: el.clientHeight || 600,
         }),
-      exportGLB: () =>
-        new Promise((resolve, reject) =>
+      exportGLB: () => {
+        let meshes = 0;
+        group.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes++; });
+        if (!meshes) return Promise.reject(new ExportError('لا يوجد مجسم لتصديره.'));
+        return new Promise((resolve, reject) =>
           new GLTFExporter().parse(group, (r) => resolve(new Blob([r as ArrayBuffer], { type: 'model/gltf-binary' })), reject, { binary: true }),
-        ),
+        );
+      },
       exportOBJ: () => new Blob([new OBJExporter().parse(group)], { type: 'text/plain' }),
     };
     (s as unknown as { api: ViewerApi }).api = api;
@@ -135,6 +133,7 @@ export function Viewer3D(props: ViewerProps) {
       ro.disconnect();
       controls.dispose();
       renderer.dispose();
+      renderer.forceContextLoss(); // phones allow only a few WebGL contexts — free this one now
       el.removeChild(renderer.domElement);
       st.current = null;
     };

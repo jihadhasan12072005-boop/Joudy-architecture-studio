@@ -256,3 +256,22 @@ export async function drawSamplePlan(): Promise<Blob> {
 
 /** Known facts about the sample, used for honest "measured vs estimated" demos. */
 export const SAMPLE_FACTS = { widthM: 36, pxPerM: 30, originPx: [160, 140] as [number, number] };
+
+/** PDF + the exact page image it contains (for the preview / content check). */
+export async function pdfWithPreview(canvas: HTMLCanvasElement): Promise<{ blob: Blob; preview: Blob }> {
+  const preview = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), 'image/png'));
+  return { blob: await canvasToPdf(canvas), preview };
+}
+
+export async function blobToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
+  const img = await blobToImage(blob);
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0);
+  URL.revokeObjectURL(img.src);
+  return c;
+}

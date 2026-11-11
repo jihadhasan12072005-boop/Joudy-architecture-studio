@@ -11,7 +11,9 @@ import {
   bbox, duplicateMass, insertVertex, massArea, mergeMasses, removeVertex, ROOF_LABELS, setMassSize, MASS_COLORS, type Mass, type RoofType, type V2,
 } from '../../editor/geom';
 import { FILE_FORMAT, FILE_VERSION, scaleModel, snapshotOf, type EditorModel, type ModelSnapshot, type RefImage } from '../../editor/model';
-import { downloadBlobAs, renderPdfPage, safeName, isPdfBlob } from '../../lab/io';
+import { renderPdfPage, safeName, isPdfBlob, pdfWithPreview, blobToCanvas } from '../../lab/io';
+import { ExportPreview, type ExportKind, type ExportResult } from '../../components/ExportPreview';
+import { checkImageBlob, ExportError } from '../../lib/exportGuard';
 
 const TOOLS: { key: Tool; label: string; icon: string; key2: string; help: string }[] = [
   { key: 'select', label: 'تحديد وتحريك', icon: 'target', key2: 'V', help: 'حددي كتلة واسحبيها، غيّري أبعادها بالمربعات، ودوّريها بالدائرة.' },
@@ -59,6 +61,7 @@ export function EditorPage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [exported, setExported] = useState(false);
+  const [exp, setExp] = useState<ExportKind | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const engine = useRef<MassEditorEngine | null>(null);
   const past = useRef<HistItem[]>([]);
@@ -285,26 +288,24 @@ export function EditorPage() {
     toast(`حُفظت «${name}»`);
   };
 
-  const exportPng = async () => {
-    if (!engine.current || !model) return;
-    downloadBlobAs(await engine.current.snapshotPng(2), `${safeName(model.title)}-${view}.png`);
-    setExported(true);
-  };
-  const exportGlb = async () => {
-    if (!engine.current || !model) return;
-    downloadBlobAs(await engine.current.exportGLB(), `${safeName(model.title)}.glb`);
-    setExported(true);
-  };
-  const exportJson = async () => {
-    if (!model) return;
+  const buildExport = async (kind: ExportKind): Promise<ExportResult> => {
+    if (!engine.current || !model) throw new ExportError('المحرر لم يجهز بعد.');
+    if (kind === 'png') return { blob: await engine.current.snapshotPng(2), filename: `${safeName(model.title)}-${view}.png`, note: model.measured ? '' : 'الأبعاد في هذا التصميم تقريبية.' };
+    if (kind === 'pdf') {
+      const shot = await engine.current.snapshotPng(2);
+      await checkImageBlob(shot);
+      const { blob, preview } = await pdfWithPreview(await blobToCanvas(shot));
+      return { blob, preview, filename: `${safeName(model.title)}-${view}.pdf` };
+    }
+    if (kind === 'glb') return { blob: await engine.current.exportGLB(), preview: await engine.current.snapshotPng(1), filename: `${safeName(model.title)}.glb` };
     let referenceImage: string | null = null;
     if (model.reference) {
       const b = await getBlob(model.reference.blobId);
       if (b) referenceImage = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(b); });
     }
     const file = { format: FILE_FORMAT, version: FILE_VERSION, savedAt: new Date().toISOString(), model: { ...model, versions: [] }, referenceImage };
-    downloadBlobAs(new Blob([JSON.stringify(file)], { type: 'application/json' }), `${safeName(model.title)}.joudy-massing.json`);
-    setExported(true);
+    const preview = model.masses.length ? await engine.current.snapshotPng(1) : undefined;
+    return { blob: new Blob([JSON.stringify(file)], { type: 'application/json' }), preview, filename: `${safeName(model.title)}.joudy-massing.json`, note: `${model.masses.length} كتل${model.reference ? ' + صورة المسقط' : ''}.` };
   };
 
   // ---------------------------------------------------------------- render
@@ -340,9 +341,10 @@ export function EditorPage() {
           <button className="btn sm" onClick={() => setHelpOpen(true)}><Icon name="info" />شرح الأدوات</button>
           <button className="btn sm" onClick={saveVersion} title="Ctrl+S"><Icon name="star" />حفظ نسخة</button>
           <button className="btn sm" onClick={() => setVersionsOpen(true)}><Icon name="history" />النسخ ({model.versions.length})</button>
-          <button className="btn sm" onClick={exportPng}><Icon name="image" />صورة PNG</button>
-          <button className="btn sm" onClick={exportGlb} disabled={!model.masses.length}><Icon name="cube" />GLB</button>
-          <button className="btn sm" onClick={exportJson}><Icon name="download" />ملف المشروع</button>
+          <button className="btn sm" onClick={() => setExp('png')} disabled={!model.masses.length} title={model.masses.length ? '' : 'ارسمي كتلة أولاً'}><Icon name="image" />صورة PNG</button>
+          <button className="btn sm" onClick={() => setExp('pdf')} disabled={!model.masses.length}><Icon name="pdf" />PDF</button>
+          <button className="btn sm" onClick={() => setExp('glb')} disabled={!model.masses.length}><Icon name="cube" />GLB</button>
+          <button className="btn sm" onClick={() => setExp('json')}><Icon name="download" />ملف المشروع</button>
         </div>
       </div>
 
@@ -477,6 +479,7 @@ export function EditorPage() {
         </Modal>
       )}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {exp && <ExportPreview kind={exp} build={async () => { const r = await buildExport(exp); setExported(true); return r; }} onClose={() => setExp(null)} />}
     </div>
   );
 }

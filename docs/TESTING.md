@@ -99,6 +99,39 @@ A real bug was found and fixed during testing: two fast clicks in different plac
 - Snapping to lines drawn in the image itself (snapping works on the grid and on mass vertices).
 - Touch and pen editing. The editor is built for mouse and keyboard; on a phone it is usable for viewing only.
 
+## Export integrity: the "blank file" report (Nov 2026)
+
+**Root causes found:**
+1. **Phone layout overflow (main cause of "empty pages" on phones).**
+   - On the presentation-board tab, a hidden container was placed at `left: -10000px`. In a right-to-left page that widened the document to 10,390 px on a 390 px phone.
+   - The editor's single-column grid (`1fr`) also grew to 619 px because the views bar wouldn't wrap.
+   - Phones then zoomed the whole page out, so it looked almost empty and taps hit the wrong elements.
+   - Fixed: the hidden container is now clipped, and the grids use `minmax(0, 1fr)`. Every lab tab and the editor were checked: 0 px overflow on iPhone and Android emulation.
+2. **No safety net on exports.**
+   - Files were downloaded directly, without any check of their content.
+   - 3D captures were taken from whatever the camera showed, so a model outside the frame or a lost WebGL context gave a background-only image.
+
+**Fixes:**
+- **Preview first:** every export (PNG, PDF, GLB, OBJ, SVG, board, project file) opens a preview dialog that shows the real file before "Download file" or "Share / save" on phones.
+- **Content checks:**
+  - Images and PDF pages are measured, and must show at least 1% non-background pixels.
+  - GLB files are parsed: they must contain meshes and triangles.
+  - A failed check shows a clear Arabic message and no file is downloaded.
+  - Empty designs disable the export buttons.
+- **3D capture:**
+  - Checks that the WebGL context is alive and the scene has meshes.
+  - Auto-frames the model if it is outside the camera.
+  - Waits for frames to be presented, then renders and reads the buffer.
+- **WebGL memory:** contexts are released on unmount, because phones allow only a few at a time.
+
+**Test** (`scripts/e2e-export.cjs` with `scripts/inspect-exports.cjs`): on desktop, iPhone 13 and Pixel 7 emulation, it creates designs in the Lab and the Editor, checks the in-app preview, downloads every format, then **opens each file**:
+- PNG files are decoded pixel by pixel.
+- PDF files are rendered with poppler.
+- GLB files are parsed.
+- The project file is parsed.
+
+All checks pass. This includes an editor export with the camera pointed away from the model (auto-framed), and empty designs where export is disabled.
+
 ## Not tested: you need to check these
 
 - **Access from Syria.** Not tested; it can only be checked from a Syrian network.

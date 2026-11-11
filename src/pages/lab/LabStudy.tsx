@@ -10,7 +10,9 @@ import { fmt } from '../../lib/format';
 import { uid } from '../../lib/id';
 import { adjacencyKey } from '../../lib/program';
 import { daySummary, localDate, sunPosition } from '../../lib/sun';
-import { canvasToPdf, downloadBlobAs, safeName, svgToPng, blobToImage } from '../../lab/io';
+import { safeName, svgToPng, blobToImage, pdfWithPreview, blobToCanvas } from '../../lab/io';
+import { ExportPreview, type ExportKind, type ExportResult } from '../../components/ExportPreview';
+import { checkCanvas, checkImageBlob, ExportError } from '../../lib/exportGuard';
 import {
   DEFAULT_PARAMS, buildVolumes, elevationProfile, footprintBBox, heightField, scaleFromReference, sectionProfile, sideOrientation, variants,
   type MassingMode, type Side, type SpaceRole, type SpaceSetting, type ZoneKey, type Volume,
@@ -367,30 +369,37 @@ function colorFn(_e: Engine, colorBy: 'height' | 'zone', vols: Volume[]) {
 
 function ExportButtons({ api, name, study }: { api: ViewerApi | null; name: string; study: PlanStudy }) {
   const toast = useToast();
-  const [busy, setBusy] = useState(false);
+  const [exp, setExp] = useState<ExportKind | null>(null);
   const saveToProject = async () => {
     if (!api || !study.projectId) return;
-    const png = await api.snapshot(2);
-    await addFile({ projectId: study.projectId, blob: png, name: `${safeName(name)}-3d.png`, category: 'diagram', title: `كتلة: ${study.title}` });
-    toast('حُفظت صورة الكتلة في مخططات المشروع');
+    try {
+      const png = await api.snapshot(2);
+      await checkImageBlob(png);
+      await addFile({ projectId: study.projectId, blob: png, name: `${safeName(name)}-3d.png`, category: 'diagram', title: `كتلة: ${study.title}` });
+      toast('حُفظت صورة الكتلة في مخططات المشروع');
+    } catch (err) {
+      toast(err instanceof ExportError ? err.message : 'تعذّر حفظ الصورة.', 'error');
+    }
+  };
+  const build = async (kind: ExportKind): Promise<ExportResult> => {
+    if (!api) throw new ExportError('العارض ثلاثي الأبعاد لم يجهز بعد.');
+    if (kind === 'png') return { blob: await api.snapshot(2), filename: `${safeName(name)}-3d.png` };
+    if (kind === 'pdf') { const shot = await api.snapshot(2); await checkImageBlob(shot); const { blob, preview } = await pdfWithPreview(await blobToCanvas(shot)); return { blob, preview, filename: `${safeName(name)}-3d.pdf` }; }
+    if (kind === 'glb') return { blob: await api.exportGLB(), preview: await api.snapshot(1), filename: `${safeName(name)}.glb` };
+    return { blob: api.exportOBJ(), preview: await api.snapshot(1), filename: `${safeName(name)}.obj` };
   };
   return (
     <div className="stack sm">
-      <div className="label">تنزيل</div>
+      <div className="label">تصدير (مع معاينة قبل التنزيل)</div>
       <div className="row" style={{ gap: 6 }}>
-        <button className="btn sm" disabled={!api || busy} onClick={async () => { setBusy(true); downloadBlobAs(await api!.snapshot(2), `${safeName(name)}-3d.png`); setBusy(false); }}><Icon name="image" />PNG</button>
-        <button className="btn sm" disabled={!api || busy} onClick={async () => {
-          setBusy(true);
-          const img = await blobToImage(await api!.snapshot(2));
-          const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
-          c.getContext('2d')!.drawImage(img, 0, 0);
-          downloadBlobAs(await canvasToPdf(c), `${safeName(name)}-3d.pdf`); setBusy(false);
-        }}><Icon name="pdf" />PDF</button>
-        <button className="btn sm" disabled={!api || busy} onClick={async () => { setBusy(true); downloadBlobAs(await api!.exportGLB(), `${safeName(name)}.glb`); setBusy(false); }}><Icon name="cube" />GLB</button>
-        <button className="btn sm" disabled={!api} onClick={() => downloadBlobAs(api!.exportOBJ(), `${safeName(name)}.obj`)}><Icon name="cube" />OBJ</button>
+        <button className="btn sm" disabled={!api} onClick={() => setExp('png')}><Icon name="image" />PNG</button>
+        <button className="btn sm" disabled={!api} onClick={() => setExp('pdf')}><Icon name="pdf" />PDF</button>
+        <button className="btn sm" disabled={!api} onClick={() => setExp('glb')}><Icon name="cube" />GLB</button>
+        <button className="btn sm" disabled={!api} onClick={() => setExp('obj')}><Icon name="cube" />OBJ</button>
       </div>
-      <p className="tiny muted" style={{ margin: 0 }}>GLB يفتح في Blender و SketchUp (عبر إضافة) و Windows 3D Viewer؛ OBJ يُستورد في Rhino و 3ds Max و SketchUp. الوحدة: متر.</p>
+      <p className="tiny muted" style={{ margin: 0 }}>الصورة تُلتقط من العارض بعد اكتمال العرض، ويُؤطَّر المجسم تلقائياً إن كان خارج الإطار. GLB يفتح في Blender و SketchUp (عبر إضافة) و Windows 3D Viewer؛ OBJ في Rhino و 3ds Max. الوحدة: متر.</p>
       {study.projectId && <button className="btn sm ghost" disabled={!api} onClick={saveToProject}><Icon name="upload" />حفظ الصورة في مخططات المشروع</button>}
+      {exp && <ExportPreview kind={exp} build={() => build(exp)} onClose={() => setExp(null)} />}
     </div>
   );
 }
@@ -520,21 +529,23 @@ function OpenInEditor({ study, e }: { study: PlanStudy; e: Engine }) {
 // 3. 2D massing plan
 // ---------------------------------------------------------------------------
 function SvgExports({ svg, name, label }: { svg: SVGSVGElement | null; name: string; label?: string }) {
+  const [exp, setExp] = useState<ExportKind | null>(null);
+  const build = async (kind: ExportKind): Promise<ExportResult> => {
+    if (!svg) throw new ExportError('المخطط لم يُرسم بعد.');
+    const png = await svgToPng(svg, 3);
+    if (kind === 'png') return { blob: png, filename: `${safeName(name)}.png` };
+    if (kind === 'pdf') { await checkImageBlob(png); const { blob, preview } = await pdfWithPreview(await blobToCanvas(png)); return { blob, preview, filename: `${safeName(name)}.pdf` }; }
+    const c = svg.cloneNode(true) as SVGSVGElement;
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    return { blob: new Blob([new XMLSerializer().serializeToString(c)], { type: 'image/svg+xml' }), preview: png, filename: `${safeName(name)}.svg` };
+  };
   return (
     <div className="row" style={{ gap: 6 }}>
       {label && <span className="small muted">{label}</span>}
-      <button className="btn sm" disabled={!svg} onClick={async () => downloadBlobAs(await svgToPng(svg!, 3), `${safeName(name)}.png`)}><Icon name="image" />PNG</button>
-      <button className="btn sm" disabled={!svg} onClick={async () => {
-        const img = await blobToImage(await svgToPng(svg!, 3));
-        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
-        c.getContext('2d')!.drawImage(img, 0, 0);
-        downloadBlobAs(await canvasToPdf(c), `${safeName(name)}.pdf`);
-      }}><Icon name="pdf" />PDF</button>
-      <button className="btn sm" disabled={!svg} onClick={() => {
-        const c = svg!.cloneNode(true) as SVGSVGElement;
-        c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        downloadBlobAs(new Blob([new XMLSerializer().serializeToString(c)], { type: 'image/svg+xml' }), `${safeName(name)}.svg`);
-      }}><Icon name="file" />SVG</button>
+      <button className="btn sm" disabled={!svg} onClick={() => setExp('png')}><Icon name="image" />PNG</button>
+      <button className="btn sm" disabled={!svg} onClick={() => setExp('pdf')}><Icon name="pdf" />PDF</button>
+      <button className="btn sm" disabled={!svg} onClick={() => setExp('svg')}><Icon name="file" />SVG</button>
+      {exp && <ExportPreview kind={exp} build={() => build(exp)} onClose={() => setExp(null)} />}
     </div>
   );
 }
@@ -843,10 +854,26 @@ function BoardTab({ study, update, e, metrics }: { study: PlanStudy; update: Upd
   const sheet = useRef<HTMLCanvasElement | null>(null);
   const color = useMemo(() => colorFn(e, 'height', e.volumes), [e.volumes]); // eslint-disable-line react-hooks/exhaustive-deps
   const projectName = useLive(async () => (study.projectId ? (await getProject(study.projectId))?.name ?? '' : ''), [study.projectId]) ?? '';
+  const toast = useToast();
+  const [exp, setExp] = useState<ExportKind | null>(null);
+  const buildBoard = async (kind: ExportKind): Promise<ExportResult> => {
+    const c = sheet.current;
+    if (!c) throw new ExportError('أنشئي اللوحة أولاً.');
+    checkCanvas(c);
+    if (kind === 'pdf') { const { blob, preview } = await pdfWithPreview(c); return { blob, preview, filename: `${safeName(study.title)}-board.pdf` }; }
+    return { blob: await new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png')), filename: `${safeName(study.title)}-board.png` };
+  };
 
   const compose = async () => {
     if (!api) return;
     setBusy(true);
+    try { await composeInner(); } catch (err) {
+      setBusy(false);
+      toast(err instanceof ExportError ? err.message : `فشل إنشاء اللوحة: ${(err as Error).message}`, 'error');
+    }
+  };
+  const composeInner = async () => {
+    if (!api) return;
     const W = 2480, H = 1754; // A3 landscape ≈ 210 dpi
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -867,7 +894,9 @@ function BoardTab({ study, update, e, metrics }: { study: PlanStudy; update: Upd
     g.font = '26px "IBM Plex Sans Arabic", sans-serif';
     g.fillText(est(e) ? 'الأبعاد تقديرية — المقياس غير محدد' : `المقياس مقاس من المسقط · ارتفاع الطابق ${study.floorHeight} م`, M, H - 60);
     // 3D
-    const shot = await blobToImage(await api.snapshot(2));
+    const shotBlob = await api.snapshot(2);
+    await checkImageBlob(shotBlob); // the 3D view must really contain the model
+    const shot = await blobToImage(shotBlob);
     const box3d = { x: W * 0.42, y: M, w: W * 0.58 - M, h: H - 150 - M * 2 };
     const k3 = Math.min(box3d.w / shot.naturalWidth, box3d.h / shot.naturalHeight);
     g.drawImage(shot, box3d.x + (box3d.w - shot.naturalWidth * k3) / 2, box3d.y + (box3d.h - shot.naturalHeight * k3) / 2, shot.naturalWidth * k3, shot.naturalHeight * k3);
@@ -906,6 +935,12 @@ function BoardTab({ study, update, e, metrics }: { study: PlanStudy; update: Upd
       g.fillStyle = '#6e675d'; g.font = '20px "IBM Plex Sans Arabic", sans-serif'; g.textAlign = 'left';
       g.fillText('المسقط الأصلي', box3d.x, box3d.y + r.height * kk + 26);
     }
+    try {
+      checkCanvas(c);
+    } catch (err) {
+      setBusy(false);
+      return toast(err instanceof ExportError ? err.message : 'فشل إنشاء اللوحة.', 'error');
+    }
     sheet.current = c;
     setPreview(c.toDataURL('image/jpeg', 0.8));
     update((st) => ({ ...st, step: 6 }));
@@ -937,8 +972,8 @@ function BoardTab({ study, update, e, metrics }: { study: PlanStudy; update: Upd
           <button className="btn primary" disabled={!api || busy} onClick={compose}><Icon name="board" />{busy ? 'جارٍ الإنشاء…' : 'إنشاء اللوحة'}</button>
           {preview && (
             <div className="row" style={{ gap: 6 }}>
-              <button className="btn sm" onClick={() => sheet.current!.toBlob((b) => downloadBlobAs(b!, `${safeName(study.title)}-board.png`), 'image/png')}><Icon name="image" />PNG</button>
-              <button className="btn sm" onClick={async () => downloadBlobAs(await canvasToPdf(sheet.current!), `${safeName(study.title)}-board.pdf`)}><Icon name="pdf" />PDF</button>
+              <button className="btn sm" onClick={() => setExp('png')}><Icon name="image" />PNG</button>
+              <button className="btn sm" onClick={() => setExp('pdf')}><Icon name="pdf" />PDF</button>
               {study.projectId && (
                 <button className="btn sm ghost" onClick={async () => {
                   const b = await new Promise<Blob>((r) => sheet.current!.toBlob((x) => r(x!), 'image/png'));
@@ -950,6 +985,7 @@ function BoardTab({ study, update, e, metrics }: { study: PlanStudy; update: Upd
         </section>
         <section className="card"><ExportButtons api={api} name={study.title} study={study} /></section>
         <Progress value={study.step / 6} label="تقدم الدراسة" />
+        {exp && <ExportPreview kind={exp} build={() => buildBoard(exp)} onClose={() => setExp(null)} />}
       </aside>
     </div>
   );

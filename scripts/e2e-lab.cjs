@@ -10,6 +10,16 @@ let failures = 0;
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) failures++; };
 const vis = (l, t = 15000) => l.first().waitFor({ state: 'visible', timeout: t }).then(() => true, () => false);
 
+
+async function confirmDownload(page, triggerClick) {
+  await triggerClick();
+  const dlg = page.getByRole('dialog', { name: /تصدير/ });
+  try { await dlg.getByRole('button', { name: 'تنزيل الملف' }).waitFor({ timeout: 40000 }); }
+  catch (e) { console.log('   DIALOG STATE:', (await page.locator('[role=dialog]').allInnerTexts()).join(' | ').slice(0, 400)); throw e; }
+  const [d] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), dlg.getByRole('button', { name: 'تنزيل الملف' }).click()]);
+  return d;
+}
+
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 }, acceptDownloads: true });
@@ -97,7 +107,7 @@ const vis = (l, t = 15000) => l.first().waitFor({ state: 'visible', timeout: t }
   await page.screenshot({ path: path.join(OUT, '05-massing-3d-block-shadows.png') });
   await page.getByRole('tab', { name: 'دراسة حجمية' }).click();
   for (const [label, ext] of [['GLB', '.glb'], ['OBJ', '.obj'], ['PNG', '.png'], ['PDF', '.pdf']]) {
-    const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), page.locator('.lab-side').getByRole('button', { name: label, exact: true }).first().click()]);
+    const dl = await confirmDownload(page, () => page.locator('.lab-side').getByRole('button', { name: label, exact: true }).first().click());
     const p = path.join(OUT, 'export-3d' + ext);
     await dl.saveAs(p);
     const size = fs.statSync(p).size;
@@ -111,7 +121,7 @@ const vis = (l, t = 15000) => l.first().waitFor({ state: 'visible', timeout: t }
   ok(await vis(page.locator('svg[aria-label="مخطط الكتلة ثنائي الأبعاد"] path')), '2D massing diagram drawn');
   ok(await vis(page.locator('svg[aria-label="مخطط الكتلة ثنائي الأبعاد"]').getByText('فناء')), '2D diagram labels the courtyard');
   await page.locator('.card.tight').screenshot({ path: path.join(OUT, '06-massing-2d.png') });
-  const [d2] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'PDF', exact: true }).first().click()]);
+  const d2 = await confirmDownload(page, () => page.getByRole('button', { name: 'PDF', exact: true }).first().click());
   await d2.saveAs(path.join(OUT, 'massing-2d.pdf'));
   ok(fs.readFileSync(path.join(OUT, 'massing-2d.pdf')).subarray(0, 4).toString() === '%PDF', '2D diagram exports to PDF');
 
@@ -149,10 +159,10 @@ const vis = (l, t = 15000) => l.first().waitFor({ state: 'visible', timeout: t }
   await page.waitForTimeout(800);
   await page.getByRole('button', { name: 'إنشاء اللوحة' }).click();
   ok(await vis(page.locator('img.board-preview'), 30000), 'presentation board composed');
-  const [db] = await Promise.all([page.waitForEvent('download'), page.locator('.lab-side').getByRole('button', { name: 'PDF', exact: true }).first().click()]);
+  const db = await confirmDownload(page, () => page.locator('.lab-side').getByRole('button', { name: 'PDF', exact: true }).first().click());
   await db.saveAs(path.join(OUT, 'board.pdf'));
   ok(fs.statSync(path.join(OUT, 'board.pdf')).size > 50000, 'board PDF downloaded');
-  const [dbp] = await Promise.all([page.waitForEvent('download'), page.locator('.lab-side').getByRole('button', { name: 'PNG', exact: true }).first().click()]);
+  const dbp = await confirmDownload(page, () => page.locator('.lab-side').getByRole('button', { name: 'PNG', exact: true }).first().click());
   await dbp.saveAs(path.join(OUT, 'board.png'));
 
   console.log('Persistence');
