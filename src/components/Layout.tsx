@@ -6,6 +6,7 @@ import { UpdateBanner } from './UpdateBanner';
 
 const NAV = [
   { to: '/', icon: 'home', label: 'الرئيسية', end: true },
+  { to: '/editor', icon: 'edit', label: 'محرر الكتل' },
   { to: '/lab', icon: 'cube', label: 'مختبر الكتلة' },
   { to: '/projects', icon: 'folder', label: 'المشاريع' },
   { to: '/tools', icon: 'compass', label: 'الأدوات الهندسية' },
@@ -34,14 +35,14 @@ export function Layout() {
       <aside className="sidebar" aria-label="القائمة الرئيسية">
         <Brand />
         <div className="nav-label">الاستوديو</div>
-        {NAV.slice(0, 4).map((n) => (
+        {NAV.slice(0, 5).map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Icon name={n.icon} />
             {n.label}
           </NavLink>
         ))}
         <div className="nav-label">الدراسة</div>
-        {NAV.slice(4).map((n) => (
+        {NAV.slice(5).map((n) => (
           <NavLink key={n.to} to={n.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <Icon name={n.icon} />
             {n.label}
@@ -75,7 +76,7 @@ export function Layout() {
       </div>
 
       <nav className="mobile-nav" aria-label="التنقل">
-        {[NAV[0], NAV[1], NAV[2], NAV[4], NAV[6]].map((n) => (
+        {[NAV[0], NAV[2], NAV[3], NAV[5], NAV[7]].map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'active' : '')}>
             <Icon name={n.icon} />
             {n.label.replace('الأدوات الهندسية', 'الأدوات').replace('المواد الدراسية', 'المواد').replace('المساعد الذكي', 'المساعد').replace('مختبر الكتلة', 'الكتلة')}

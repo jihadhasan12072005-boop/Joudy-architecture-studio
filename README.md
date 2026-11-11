@@ -4,7 +4,32 @@ A private, Arabic-first (RTL) Progressive Web App made as a gift for **Joudy**, 
 
 > تطبيق شخصي لجودي: مشاريع معمارية بست مراحل، أدوات هندسية دقيقة تعمل بدون إنترنت، تتبع للمواد الدراسية ودفتر أخطاء، ومساعد ذكي جاهز للتفعيل عند توفر مزود متاح رسمياً في سوريا. كل البيانات محفوظة على جهازها فقط مع نسخ احتياطي كامل.
 
-## New: Massing Lab (مختبر الكتلة) — from floor plan to massing
+## New: Massing Editor (محرر الكتل) — Joudy designs the masses herself
+
+An interactive 3D editor where each mass is a real geometric object in the scene, not a generated picture. Built for a Windows laptop with mouse and keyboard.
+
+**Workflow:** upload the plan → set the scale if a dimension is known → draw the mass outlines → set the heights → edit the shape and roofs → save and export.
+
+| Capability | How |
+|---|---|
+| Plan as reference | Upload an image or PDF. Adjust its width, rotation and opacity; lock it or move it. |
+| Scale | Click two ends of a known dimension and type its length. The image and all drawn masses are rescaled together. Until then every dimension is marked **approximate (≈)**. |
+| Draw masses | Rectangle (R), or a free/irregular polygon (P) with grid and vertex snapping and 15° angles (Shift). |
+| Select / move / rotate / copy / delete | Click, Shift+click, drag, rotation handle or `[` `]` keys, Ctrl+D, Delete, arrow keys to nudge. |
+| Dimensions | Drag the corner or side handles, or type the exact length, width, height, floors, floor height, base level and rotation. |
+| Height by dragging | In the 3D view, drag the bronze sphere on top of the selected mass. |
+| Edit the outline | Edit tool (E): drag vertices, drag the edge mid-handles to **curve walls**, double-click to add a vertex, Delete to remove one, and set the **corner radius** per vertex or for all corners. |
+| Merge / voids | Merge touching masses (M). Draw a void (H) only where you want one (courtyard or cut-out) and close it again with one click. No courtyard is ever added automatically. |
+| Roofs | Flat, shed, gable, hip, plus **curved**: barrel vault, dome and flowing wave, each with a rise and a direction. |
+| Views | Top plan, 3D perspective (orbit, zoom, pan) and 4 elevations (N, S, E, W). |
+| History and saving | Undo/redo (Ctrl+Z / Ctrl+Y, 150 steps), autosave, named versions (Ctrl+S) that reopen for editing. |
+| Export | PNG of any view, **GLB** model, and a **re-editable project file** (`.joudy-massing.json`, includes the plan image). |
+
+From the Massing Lab, "Open in massing editor" (فتح في محرر الكتل) turns an automatically generated massing into editable masses.
+
+![Massing editor — example](docs/screenshots/editor-3d.png)
+
+## Massing Lab (مختبر الكتلة) — from floor plan to massing
 
 Upload a floor plan (image, screenshot or PDF). The app **reads the drawing itself**: it finds the walls, the building outline, the rooms, the courtyards and the doors. It then builds outputs derived from that plan:
 

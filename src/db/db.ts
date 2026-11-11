@@ -19,7 +19,7 @@ export const DB_NAME = 'joudy-architecture-studio';
  * Only ever add stores/indexes in new branches of `upgrade` — never delete
  * a store that holds user data.
  */
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export interface JoudyDB {
   meta: { key: string; value: unknown };
@@ -76,7 +76,12 @@ export function getDB(): Promise<DB> {
           studies.createIndex('byProject', 'projectId');
           studies.createIndex('byUpdated', 'updatedAt');
         }
-        // Future: `if (oldVersion < 3) { ...add stores/indexes only... }`
+        if (oldVersion < 3) {
+          // v3: editable massing models (massing editor). Existing stores untouched.
+          const models = db.createObjectStore('models', { keyPath: 'id' });
+          models.createIndex('byUpdated', 'updatedAt');
+        }
+        // Future: `if (oldVersion < 4) { ...add stores/indexes only... }`
       },
       blocked() {
         console.warn('Database upgrade blocked by another open tab.');

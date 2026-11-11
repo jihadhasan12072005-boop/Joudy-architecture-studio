@@ -60,6 +60,45 @@
 - Output is conceptual massing, not BIM.
 - Interior furniture planning and written design critique need the AI assistant, which is still disabled.
 
+## Massing Editor (Nov 2026)
+
+**Unit tests** (`tests/editor-geom.test.ts`, `tests/editor-model.test.ts`):
+- **Geometry:** world/local transforms; exact length and width by number; anchored scaling.
+  - True circular corner fillets: area loss ≈ (4−π)r².
+  - Curved edges: area gain ≈ ⅔·chord·sagitta.
+  - Inserting and removing vertices.
+  - Roof heights (shed, gable, hip, barrel, dome) and mesh generation.
+  - Merging touching masses, and refusing to merge disconnected ones.
+  - Voids: a hole, a split, and voids in a rotated mass.
+- **Model:**
+  - Calibration rescales the image and the masses together.
+  - The project file round-trips and is validated.
+  - IndexedDB v3 storage survives reopening.
+  - Models and their plan images are included in backups.
+
+**Full user cycle in a real browser** (`scripts/e2e-editor.cjs`, mouse and keyboard on the production build), all checks pass:
+1. New model, upload a plan image (flagged *approximate*), change its opacity.
+2. Calibrate a 24 m dimension: the image becomes exactly 30 m and the dimensions are marked *measured*.
+3. Draw a rectangle traced over the plan (216.0 m² against an expected 216) and a 6-point irregular polygon.
+4. Rename, set length = 20 m and 4 floors (12.8 m).
+5. Drag to move, `]` to rotate, Ctrl+D, Delete, Ctrl+Z, Ctrl+Y.
+6. Drag a side handle to resize.
+7. Drag a vertex, drag an edge mid-handle to curve the wall (3.15 m sagitta), round all corners by 1.2 m.
+8. Shed roof (3 m, east), then a curved barrel roof.
+9. Draw a void, close it, undo.
+10. 3D view: drag the height handle (12.8 → 15.1 m); south elevation.
+11. Ctrl+S version, reload: **all masses identical**, plus names, roofs, corners, scale, image settings and the version.
+12. Export PNG, GLB and the project file, then re-open the file: identical masses and image.
+13. Ready-made example (2 masses on a measured plan), merge with Shift+click, undo.
+
+A real bug was found and fixed during testing: two fast clicks in different places counted as a double-click (it added a vertex instead of curving an edge).
+
+**Not implemented yet (stated honestly in the app):**
+- Free-form NURBS or B-spline surfaces. The curved roofs are parametric (barrel, dome, wave).
+- Sloped walls and tapering masses.
+- Snapping to lines drawn in the image itself (snapping works on the grid and on mass vertices).
+- Touch and pen editing. The editor is built for mouse and keyboard; on a phone it is usable for viewing only.
+
 ## Not tested: you need to check these
 
 - **Access from Syria.** Not tested; it can only be checked from a Syrian network.

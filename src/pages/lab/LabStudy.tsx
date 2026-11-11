@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { addFile, deleteStudy, getProject, getStudy, listProjects, saveProject, saveStudy } from '../../db/repo';
+import { putBlob, saveModel, addFile, deleteStudy, getProject, getStudy, listProjects, saveProject, saveStudy } from '../../db/repo';
 import type { PlanStudy, SpaceRow } from '../../db/types';
 import { useAutosave, useLive } from '../../lib/hooks';
 import { Icon } from '../../components/Icon';
@@ -21,6 +21,7 @@ import { floorColor, useEngine, useMetrics, ZONE_COLORS, ZONE_LABELS, type Engin
 import { PlanCanvas, type Overlay, type Tool } from './PlanCanvas';
 import { DIR_LABEL, ElevationSVG, MassingPlan2D, SectionSVG, SIDE_LABEL, type FacadeOptions } from './Diagrams';
 import { LabTutorial } from './LabTutorial';
+
 
 const Viewer3D = lazy(() => import('../../lab/Viewer3D'));
 
@@ -472,8 +473,46 @@ function Massing3DTab({ study, update, e }: { study: PlanStudy; update: Upd; e: 
           <NumField label="زاوية الشمال (مع عقارب الساعة من أعلى المخطط)" unit="°" value={study.northAngle} min={-360} max={360} onChange={(v) => update((s) => ({ ...s, northAngle: v }))} />
         </section>
         <section className="card"><ExportButtons api={api} name={study.title} study={study} /></section>
+        <OpenInEditor study={study} e={e} />
       </aside>
     </div>
+  );
+}
+
+/** Convert the generated massing into editable masses in the massing editor. */
+function OpenInEditor({ study, e }: { study: PlanStudy; e: Engine }) {
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (!e.ext || !e.field || !e.raster) return;
+    setBusy(true);
+    const [{ newModel }, { massFromWorld, MASS_COLORS }] = await Promise.all([import('../../editor/model'), import('../../editor/geom')]);
+    const k = e.scale.mPerPx;
+    const vols = buildVolumes(e.ext, e.field, 'volumetric', study.floorHeight);
+    const model = newModel(`${study.title} (تعديل يدوي)`, study.projectId);
+    let n = 0;
+    for (const v of vols) for (const p of v.polys) {
+      n++;
+      model.masses.push(massFromWorld(p.outer.map(([x, y]) => [x * k, y * k] as [number, number]), {
+        name: `كتلة ${n} (${v.floors} ط)`, height: v.floors * study.floorHeight, floorHeight: study.floorHeight, color: MASS_COLORS[(n - 1) % MASS_COLORS.length],
+      }, p.holes.map((h) => h.map(([x, y]) => [x * k, y * k] as [number, number]))));
+    }
+    const blob = await new Promise<Blob>((r) => e.raster!.canvas.toBlob((b) => r(b!), 'image/png'));
+    const blobId = uid();
+    await putBlob(blobId, blob);
+    const w = e.raster.w * k;
+    model.reference = { blobId, mime: 'image/png', name: study.sourceName, widthM: w, aspect: e.raster.h / e.raster.w, x: w / 2, z: (e.raster.h * k) / 2, rot: 0, opacity: 0.5, locked: true, visible: true };
+    model.measured = e.scale.method !== 'estimate';
+    model.scaleNote = model.measured ? 'المقياس منقول من دراسة مختبر الكتلة.' : '';
+    await saveModel(model);
+    nav(`/editor/${model.id}`);
+  };
+  return (
+    <section className="card stack sm">
+      <h3>تريدين التحكم الكامل؟</h3>
+      <p className="small muted" style={{ margin: 0 }}>افتحي هذه الكتل في «محرر الكتل» لتحريكها وتعديل حدودها وأسقفها بنفسك.</p>
+      <button className="btn bronze sm" disabled={busy || !e.volumes.length} onClick={go}><Icon name="edit" />فتح في محرر الكتل</button>
+    </section>
   );
 }
 

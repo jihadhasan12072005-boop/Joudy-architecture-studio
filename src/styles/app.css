@@ -424,6 +424,44 @@ table.t tfoot td { font-weight: 600; background: var(--ivory); }
   .lab-cta { width: 100%; }
 }
 
+/* ---------- Massing editor ---------- */
+.editor-page { max-width: none; padding-top: 16px; }
+.editor-head { display: flex; gap: 12px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.editor-title { font-size: clamp(1.3rem, 2.2vw, 1.8rem); border: 0; background: transparent; width: 100%; padding: 0; color: var(--charcoal); outline: none; }
+.editor-steps { list-style: none; display: flex; gap: 6px; padding: 0; margin: 0 0 10px; flex-wrap: wrap; }
+.editor-steps li { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); font-size: .8rem; color: var(--muted); }
+.editor-steps li .n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--ivory-2); font-size: .72rem; font-weight: 600; }
+.editor-steps li.done { color: var(--ink); }
+.editor-steps li.done .n { background: var(--sage); color: #fff; }
+.editor-steps li.current { border-color: var(--bronze); color: var(--charcoal); font-weight: 600; box-shadow: 0 0 0 3px var(--bronze-soft); }
+.editor-steps li.current .n { background: var(--bronze); color: #fff; }
+.editor-toolbar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px; margin-bottom: 10px; }
+.tool-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; background: transparent; border-radius: var(--r); padding: 6px 10px; cursor: pointer; font: inherit; font-size: .86rem; color: var(--ink); }
+.tool-btn svg { width: 17px; height: 17px; }
+.tool-btn:hover:not(:disabled) { background: var(--ivory); }
+.tool-btn.on { background: var(--charcoal); color: var(--ivory); }
+.tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+.tool-btn kbd, .editor-page kbd, .modal kbd { font-family: var(--font-mono); font-size: .7rem; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--ivory); color: var(--muted); direction: ltr; }
+.tool-btn.on kbd { background: #3e3a34; color: #ddd; border-color: #555; }
+.editor-main { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+.editor-viewbar { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.editor-canvas { height: calc(100vh - 290px); min-height: 460px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); background: #f4efe6; position: relative; }
+.editor-canvas canvas { display: block; outline: none; }
+.editor-hint { display: flex; gap: 8px; align-items: center; margin-top: 8px; padding: 8px 12px; background: var(--charcoal); color: var(--ivory); border-radius: var(--r); font-size: .86rem; min-height: 38px; }
+.editor-panel { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 140px); overflow-y: auto; position: sticky; top: 12px; }
+.editor-panel h3 { font-size: .98rem; }
+.mass-row { width: 100%; border: 0; background: none; cursor: pointer; font: inherit; color: inherit; }
+.mass-row:hover { background: var(--ivory); }
+.swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line-strong); flex: none; }
+.swatch-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line-strong); cursor: pointer; padding: 0; }
+.swatch-btn.on { outline: 2px solid var(--bronze); outline-offset: 2px; }
+.editor-flow { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; }
+.editor-flow li { display: flex; align-items: center; gap: 6px; font-size: .86rem; }
+.editor-flow li span { width: 22px; height: 22px; border-radius: 50%; background: var(--bronze); color: #fff; display: grid; place-items: center; font-size: .75rem; }
+.editor-flow li:not(:last-child)::after { content: '←'; color: var(--faint); margin-inline-start: 4px; }
+@media (max-width: 1100px) { .editor-main { grid-template-columns: 1fr; } .editor-panel { position: static; max-height: none; } .editor-canvas { height: 62vh; } }
+@media (max-width: 860px) { .tool-btn span, .tool-btn kbd { display: none; } }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1180px) {
   .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; }

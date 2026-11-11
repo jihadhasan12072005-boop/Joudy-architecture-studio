@@ -335,6 +335,7 @@ export const STORE_NAMES = [
   'mistakes',
   'conversations',
   'studies',
+  'models',
 ] as const;
 
 export type StoreName = (typeof STORE_NAMES)[number];

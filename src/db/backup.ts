@@ -3,11 +3,12 @@ import { getDB } from './db';
 import { DATA_VERSION } from './migrations';
 import { normalizeProject } from './defaults';
 import type { FileMeta, PlanStudy, Project, Settings } from './types';
+import type { EditorModel } from '../editor/model';
 
 export const BACKUP_APP_ID = 'joudy-architecture-studio';
 export const BACKUP_FORMAT = 1;
 
-const RECORD_STORES = ['projects', 'files', 'tasks', 'activity', 'revisions', 'subjects', 'mistakes', 'conversations', 'studies'] as const;
+const RECORD_STORES = ['projects', 'files', 'tasks', 'activity', 'revisions', 'subjects', 'mistakes', 'conversations', 'studies', 'models'] as const;
 type RecordStore = (typeof RECORD_STORES)[number];
 
 export interface BackupManifest {
@@ -39,6 +40,15 @@ export async function createBackup(): Promise<{ bytes: Uint8Array; manifest: Bac
     if (b) zip[`blobs/${f.id}`] = [new Uint8Array(await b.blob.arrayBuffer()), { level: 0 }];
     const t = (await db.get('thumbs', f.id)) as { blob: Blob } | undefined;
     if (t) zip[`thumbs/${f.id}`] = [new Uint8Array(await t.blob.arrayBuffer()), { level: 0 }];
+  }
+  for (const em of stores.models as EditorModel[]) {
+    const ids = new Set<string>();
+    if (em.reference) ids.add(em.reference.blobId);
+    for (const v of em.versions ?? []) if (v.snapshot.reference) ids.add(v.snapshot.reference.blobId);
+    for (const id of ids) {
+      const b = (await db.get('blobs', id)) as { blob: Blob } | undefined;
+      if (b) zip[`blobs/${id}`] = [new Uint8Array(await b.blob.arrayBuffer()), { level: 0 }];
+    }
   }
   for (const st of stores.studies as PlanStudy[]) {
     const b = (await db.get('blobs', st.sourceBlobId)) as { blob: Blob } | undefined;
@@ -118,6 +128,16 @@ export async function importBackup(bytes: Uint8Array, mode: 'merge' | 'replace')
         tx.objectStore('blobs').put({ id: f.id, blob: new Blob([blobBytes], { type: f.mime }) });
         const th = files[`thumbs/${f.id}`];
         if (th) tx.objectStore('thumbs').put({ id: f.id, blob: new Blob([th], { type: 'image/jpeg' }) });
+      } else if (s === 'models') {
+        const em = row as unknown as EditorModel;
+        const refs = new Map<string, string>();
+        if (em.reference) refs.set(em.reference.blobId, em.reference.mime);
+        for (const v of em.versions ?? []) if (v.snapshot.reference) refs.set(v.snapshot.reference.blobId, v.snapshot.reference.mime);
+        for (const [id, mime] of refs) {
+          const bytes = files[`blobs/${id}`];
+          if (bytes) tx.objectStore('blobs').put({ id, blob: new Blob([bytes], { type: mime }) });
+        }
+        tx.objectStore('models').put(em);
       } else if (s === 'studies') {
         const st = row as unknown as PlanStudy;
         const bytes = files[`blobs/${st.sourceBlobId}`];

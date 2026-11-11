@@ -90,7 +90,7 @@ export function Dashboard() {
         </div>
         <div className="row">
           <Link to="/lab" className="btn bronze lab-cta"><Icon name="upload" />ارفعي مسقطاً معمارياً</Link>
-          <Link to="/lab" className="btn">جرّبي بمثال</Link>
+          <Link to="/editor" className="btn"><Icon name="edit" />محرر الكتل اليدوي</Link>
         </div>
       </section>
 

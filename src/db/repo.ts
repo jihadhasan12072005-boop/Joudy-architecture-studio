@@ -15,6 +15,7 @@ import type {
   Task,
 } from './types';
 import { uid } from '../lib/id';
+import type { EditorModel } from '../editor/model';
 
 // ---------------------------------------------------------------------------
 // Change notifications (so open screens refresh after writes elsewhere)
@@ -473,6 +474,44 @@ export async function deleteStudy(id: ID): Promise<void> {
   const tx = db.transaction(['studies', 'blobs'], 'readwrite');
   tx.objectStore('studies').delete(id);
   if (s) tx.objectStore('blobs').delete(s.sourceBlobId);
+  await tx.done;
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Editable massing models (massing editor)
+// ---------------------------------------------------------------------------
+export async function listModels(): Promise<EditorModel[]> {
+  const db = await getDB();
+  const all = (await db.getAll('models')) as EditorModel[];
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function getModel(id: ID): Promise<EditorModel | undefined> {
+  const db = await getDB();
+  return (await db.get('models', id)) as EditorModel | undefined;
+}
+
+export async function saveModel(m: EditorModel): Promise<void> {
+  const db = await getDB();
+  await db.put('models', { ...m, updatedAt: Date.now() });
+  emit();
+}
+
+export async function putBlob(id: ID, blob: Blob): Promise<void> {
+  const db = await getDB();
+  await db.put('blobs', { id, blob });
+}
+
+export async function deleteModel(id: ID): Promise<void> {
+  const db = await getDB();
+  const m = (await db.get('models', id)) as EditorModel | undefined;
+  const tx = db.transaction(['models', 'blobs'], 'readwrite');
+  tx.objectStore('models').delete(id);
+  const refs = new Set<string>();
+  if (m?.reference) refs.add(m.reference.blobId);
+  for (const v of m?.versions ?? []) if (v.snapshot.reference) refs.add(v.snapshot.reference.blobId);
+  for (const r of refs) tx.objectStore('blobs').delete(r);
   await tx.done;
   emit();
 }

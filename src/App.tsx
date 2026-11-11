@@ -1,4 +1,6 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+const EditorPage = lazy(() => import('./pages/editor/EditorPage').then((m) => ({ default: m.EditorPage })));
 import { Layout } from './components/Layout';
 import { ConfirmProvider, ToastProvider } from './components/ui';
 import { useLive } from './lib/hooks';
@@ -15,6 +17,8 @@ import { SettingsPage } from './pages/Settings';
 import { PrintReport } from './pages/project/PrintReport';
 import { LabIndex } from './pages/lab/LabIndex';
 import { LabStudy } from './pages/lab/LabStudy';
+const EditorIndex = lazy(() => import('./pages/editor/EditorIndex').then((m) => ({ default: m.EditorIndex })));
+
 
 export function App() {
   const settings = useLive(getSettings);
@@ -35,6 +39,8 @@ export function App() {
                 <Route path="projects/:id/:tab" element={<ProjectWorkspace />} />
                 <Route path="lab" element={<LabIndex />} />
                 <Route path="lab/:id" element={<LabStudy />} />
+                <Route path="editor" element={<Suspense fallback={<div className="page muted">جارٍ التحميل…</div>}><EditorIndex /></Suspense>} />
+                <Route path="editor/:id" element={<Suspense fallback={<div className="page muted">جارٍ تحميل المحرر…</div>}><EditorPage /></Suspense>} />
                 <Route path="tools" element={<ToolsIndex />} />
                 <Route path="tools/:toolId" element={<ToolPage />} />
                 <Route path="academy" element={<Academy />} />
