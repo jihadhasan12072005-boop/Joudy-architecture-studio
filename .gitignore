@@ -9,3 +9,4 @@ worker/.wrangler/
 *.local
 test-results/
 *.tsbuildinfo
+deliverables/
